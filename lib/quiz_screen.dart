@@ -1,11 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:quiz_app/api_services.dart';
 import 'package:quiz_app/const/colors.dart';
-import 'package:quiz_app/const/images.dart';
 import 'package:quiz_app/const/text_style.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 
 class QuizScreen extends StatefulWidget {
   const QuizScreen({Key? key}) : super(key: key);
@@ -21,40 +20,25 @@ class _QuizScreenState extends State<QuizScreen> {
   late Future quiz;
 
   int points = 0;
+  int totalTime = 0;
 
   var isLoaded = false;
 
   var optionsList = [];
 
-  var optionsColor = [
-    Colors.white,
-    Colors.white,
-    Colors.white,
-    Colors.white,
-    Colors.white,
-  ];
+  var selectedOptionIndex; // New variable for selected option index
 
   @override
   void initState() {
     super.initState();
-    quiz = getQuiz();
     startTimer();
+    quiz = getQuiz();
   }
 
   @override
   void dispose() {
-    timer!.cancel();
+    timer?.cancel();
     super.dispose();
-  }
-
-  resetColors() {
-    optionsColor = [
-      Colors.white,
-      Colors.white,
-      Colors.white,
-      Colors.white,
-      Colors.white,
-    ];
   }
 
   startTimer() {
@@ -62,6 +46,7 @@ class _QuizScreenState extends State<QuizScreen> {
       setState(() {
         if (seconds > 0) {
           seconds--;
+          totalTime++;
         } else {
           gotoNextQuestion();
         }
@@ -69,13 +54,20 @@ class _QuizScreenState extends State<QuizScreen> {
     });
   }
 
-  gotoNextQuestion() {
-    isLoaded = false;
-    currentQuestionIndex++;
-    resetColors();
-    timer!.cancel();
-    seconds = 60;
-    startTimer();
+  gotoNextQuestion() async {
+    setState(() {
+      isLoaded = false;
+      currentQuestionIndex++;
+      selectedOptionIndex = null; // Reset selected option index
+      timer?.cancel();
+      seconds = 60;
+      startTimer();
+    });
+
+    final newQuiz = await getQuiz();
+    setState(() {
+      quiz = newQuiz;
+    });
   }
 
   @override
@@ -83,28 +75,46 @@ class _QuizScreenState extends State<QuizScreen> {
     var size = MediaQuery.of(context).size;
     return Scaffold(
       body: SafeArea(
-          child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        padding: const EdgeInsets.all(12),
-        decoration: const BoxDecoration(
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [blue, darkBlue],
-        )),
-        child: FutureBuilder(
-          future: quiz,
-          builder: (BuildContext context, AsyncSnapshot snapshot) {
-            if (snapshot.hasData) {
-              var data = snapshot.data["results"];
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [blue, darkBlue],
+            ),
+          ),
+          child: FutureBuilder(
+            future: quiz,
+            builder: (BuildContext context, AsyncSnapshot snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                  ),
+                );
+              } else if (snapshot.hasError) {
+                return Text('Failed to fetch quiz questions');
+              }
 
-              if (isLoaded == false) {
-                optionsList = data[currentQuestionIndex]["incorrect_answers"];
+              if (!isLoaded) {
+                var data = snapshot.data["results"];
+
+                if (data[currentQuestionIndex]["incorrect_answers"] is List) {
+                  optionsList = List.from(
+                      data[currentQuestionIndex]["incorrect_answers"]);
+                } else {
+                  optionsList = [];
+                }
+
                 optionsList.add(data[currentQuestionIndex]["correct_answer"]);
                 optionsList.shuffle();
                 isLoaded = true;
               }
+
+              var data = snapshot.data["results"];
 
               return SingleChildScrollView(
                 child: Column(
@@ -118,22 +128,24 @@ class _QuizScreenState extends State<QuizScreen> {
                             border: Border.all(color: lightgrey, width: 2),
                           ),
                           child: IconButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                              icon: const Icon(
-                                CupertinoIcons.xmark,
-                                color: Colors.white,
-                                size: 28,
-                              )),
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            icon: const Icon(
+                              CupertinoIcons.xmark,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
                         ),
                         Stack(
                           alignment: Alignment.center,
                           children: [
                             normalText(
-                                color: Colors.white,
-                                size: 24,
-                                text: "$seconds"),
+                              color: Colors.white,
+                              size: 24,
+                              text: "$seconds",
+                            ),
                             SizedBox(
                               width: 80,
                               height: 80,
@@ -151,89 +163,171 @@ class _QuizScreenState extends State<QuizScreen> {
                             border: Border.all(color: lightgrey, width: 2),
                           ),
                           child: TextButton.icon(
-                              onPressed: null,
-                              icon: const Icon(CupertinoIcons.heart_fill,
-                                  color: Colors.white, size: 18),
-                              label: normalText(
-                                  color: Colors.white, size: 14, text: "Quiz")),
+                            onPressed: null,
+                            icon: const Icon(
+                              CupertinoIcons.heart_fill,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            label: normalText(
+                              color: Colors.white,
+                              size: 14,
+                              text: "Quiz",
+                            ),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
-                    Image.asset(ideas, width: 200),
                     const SizedBox(height: 20),
                     Align(
-                        alignment: Alignment.centerLeft,
-                        child: normalText(
-                            color: lightgrey,
-                            size: 18,
-                            text:
-                                "Question ${currentQuestionIndex + 1} of ${data.length}")),
+                      alignment: Alignment.centerLeft,
+                      child: normalText(
+                        color: lightgrey,
+                        size: 18,
+                        text:
+                            "Question ${currentQuestionIndex + 1} of ${data.length}",
+                      ),
+                    ),
                     const SizedBox(height: 20),
                     normalText(
-                        color: Colors.white,
-                        size: 20,
-                        text: data[currentQuestionIndex]["question"]),
+                      color: Colors.white,
+                      size: 20,
+                      text: data[currentQuestionIndex]["question"],
+                    ),
                     const SizedBox(height: 20),
                     ListView.builder(
                       shrinkWrap: true,
-                      itemCount: optionsList.length,
+                      itemCount: optionsList.length + 1,
                       itemBuilder: (BuildContext context, int index) {
                         var answer =
                             data[currentQuestionIndex]["correct_answer"];
 
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              if (answer.toString() ==
-                                  optionsList[index].toString()) {
-                                optionsColor[index] = Colors.green;
-                                points = points + 10;
-                              } else {
-                                optionsColor[index] = Colors.red;
-                              }
-
+                        if (index == optionsList.length) {
+                          // Render the submit button
+                          return ElevatedButton(
+                            onPressed: () {
                               if (currentQuestionIndex < data.length - 1) {
-                                Future.delayed(const Duration(seconds: 1), () {
-                                  gotoNextQuestion();
+                                setState(() {
+                                  currentQuestionIndex++;
+                                  selectedOptionIndex =
+                                      null; // Reset selected option index
+                                  timer?.cancel();
+                                  seconds = 60;
+                                  startTimer();
+                                  isLoaded = false;
                                 });
                               } else {
-                                timer!.cancel();
-                                //here you can do whatever you want with the results
+                                timer?.cancel();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ResultScreen(
+                                      totalQuestions: data.length,
+                                      totalTime: totalTime,
+                                      totalPoints: points,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 20),
+                              alignment: Alignment.center,
+                              width: size.width - 100,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: headingText(
+                                color: Colors.black,
+                                size: 18,
+                                text: 'Submit',
+                              ),
+                            ),
+                          );
+                        }
+
+                        // Render the options
+                        return RadioListTile(
+                          title: headingText(
+                            color: Colors.white,
+                            size: 18,
+                            text: optionsList[index].toString(),
+                          ),
+                          value: index,
+                          groupValue: selectedOptionIndex,
+                          activeColor: Colors.green,
+                          onChanged: (value) {
+                            setState(() {
+                              selectedOptionIndex = value;
+                              if (answer.toString() ==
+                                  optionsList[selectedOptionIndex].toString()) {
+                                points++;
                               }
                             });
                           },
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 20),
-                            alignment: Alignment.center,
-                            width: size.width - 100,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: optionsColor[index],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: headingText(
-                              color: blue,
-                              size: 18,
-                              text: optionsList[index].toString(),
-                            ),
-                          ),
                         );
                       },
                     ),
                   ],
                 ),
               );
-            } else {
-              return const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation(Colors.white),
-                ),
-              );
-            }
-          },
+            },
+          ),
         ),
-      )),
+      ),
+    );
+  }
+}
+
+class ResultScreen extends StatelessWidget {
+  final int totalQuestions;
+  final int totalTime;
+  final int totalPoints;
+
+  const ResultScreen({
+    Key? key,
+    required this.totalQuestions,
+    required this.totalTime,
+    required this.totalPoints,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Quiz Result',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Total Questions: $totalQuestions',
+                  style: TextStyle(fontSize: 18),
+                ),
+                Text(
+                  'Total Time: $totalTime seconds',
+                  style: TextStyle(fontSize: 18),
+                ),
+                Text(
+                  'Total Points: $totalPoints',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

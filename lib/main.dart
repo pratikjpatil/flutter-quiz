@@ -70,7 +70,7 @@ class QuizApp extends StatelessWidget {
               normalText(color: lightgrey, size: 18, text: "Welcome to our"),
               headingText(color: Colors.white, size: 32, text: "Quiz App"),
               const SizedBox(height: 20),
-              normalText(color: lightgrey, size: 16, text: "By Pratik"),
+              normalText(color: lightgrey, size: 16, text: "By Pratik & Tejas"),
               const Spacer(),
               Align(
                 alignment: Alignment.center,
