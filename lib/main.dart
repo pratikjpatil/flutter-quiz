@@ -56,7 +56,9 @@ class QuizApp extends StatelessWidget {
                   border: Border.all(color: lightgrey, width: 2),
                 ),
                 child: IconButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      SystemNavigator.pop(); // Close the app
+                    },
                     icon: const Icon(
                       CupertinoIcons.xmark,
                       color: Colors.white,
