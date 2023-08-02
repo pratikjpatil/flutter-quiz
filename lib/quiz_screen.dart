@@ -28,6 +28,14 @@ class _QuizScreenState extends State<QuizScreen> {
 
   var selectedOptionIndex; // New variable for selected option index
 
+  // List of prefixes for options
+  List<String> optionPrefixes = [
+    'Option 1',
+    'Option 2',
+    'Option 3',
+    'Option 4'
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -190,10 +198,17 @@ class _QuizScreenState extends State<QuizScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    normalText(
-                      color: Colors.white,
-                      size: 20,
-                      text: data[currentQuestionIndex]["question"],
+                    // Show the "The question goes here..." text in the center
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 32),
+                        child: normalText(
+                          color: Colors.white,
+                          size: 20,
+                          text: "The question goes here...",
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 20),
                     ListView.builder(
@@ -205,68 +220,74 @@ class _QuizScreenState extends State<QuizScreen> {
 
                         if (index == optionsList.length) {
                           // Render the submit button
-                          return ElevatedButton(
-                            onPressed: () {
-                              if (currentQuestionIndex < data.length - 1) {
-                                setState(() {
-                                  currentQuestionIndex++;
-                                  selectedOptionIndex =
-                                      null; // Reset selected option index
+                          return Align(
+                            alignment: Alignment.bottomRight,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                if (currentQuestionIndex < data.length - 1) {
+                                  setState(() {
+                                    currentQuestionIndex++;
+                                    selectedOptionIndex =
+                                        null; // Reset selected option index
+                                    timer?.cancel();
+                                    seconds = 60;
+                                    startTimer();
+                                    isLoaded = false;
+                                  });
+                                } else {
                                   timer?.cancel();
-                                  seconds = 60;
-                                  startTimer();
-                                  isLoaded = false;
-                                });
-                              } else {
-                                timer?.cancel();
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ResultScreen(
-                                      totalQuestions: data.length,
-                                      totalTime: totalTime,
-                                      totalPoints: points,
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ResultScreen(
+                                        totalQuestions: data.length,
+                                        totalTime: totalTime,
+                                        totalPoints: points,
+                                      ),
                                     ),
-                                  ),
-                                );
-                              }
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 20),
-                              alignment: Alignment.center,
-                              width: size.width - 100,
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: headingText(
-                                color: Colors.black,
-                                size: 18,
-                                text: 'Submit',
+                                  );
+                                }
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                child: headingText(
+                                  color: Colors.black,
+                                  size: 18,
+                                  text: 'OK',
+                                ),
                               ),
                             ),
                           );
                         }
 
-                        // Render the options
-                        return RadioListTile(
-                          title: headingText(
-                            color: Colors.white,
-                            size: 18,
-                            text: optionsList[index].toString(),
+                        // Render the options with prefixes in the center
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              RadioListTile(
+                                title: headingText(
+                                  color: Colors.white,
+                                  size: 18,
+                                  // text: '${optionPrefixes[index]}: ${optionsList[index]}',
+                                  text: '${optionPrefixes[index]}',
+                                ),
+                                value: index,
+                                groupValue: selectedOptionIndex,
+                                activeColor: Colors.green,
+                                onChanged: (value) {
+                                  setState(() {
+                                    selectedOptionIndex = value;
+                                    if (answer.toString() ==
+                                        optionsList[selectedOptionIndex]
+                                            .toString()) {
+                                      points++;
+                                    }
+                                  });
+                                },
+                              ),
+                            ],
                           ),
-                          value: index,
-                          groupValue: selectedOptionIndex,
-                          activeColor: Colors.green,
-                          onChanged: (value) {
-                            setState(() {
-                              selectedOptionIndex = value;
-                              if (answer.toString() ==
-                                  optionsList[selectedOptionIndex].toString()) {
-                                points++;
-                              }
-                            });
-                          },
                         );
                       },
                     ),
